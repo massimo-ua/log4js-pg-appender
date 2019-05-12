@@ -22,5 +22,6 @@
   "homepage": "https://github.com/massimo-ua/log4js-pg-appender#readme",
   "dependencies": {
     "pg": "7.11.0"
-  }
+  },
+  "devDependencies": {}
 }
