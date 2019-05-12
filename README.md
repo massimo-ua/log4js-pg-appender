@@ -4,6 +4,7 @@ Simple Log4js postgresql appender
 ## Installation
 
 log4js-pg-appender tested with [log4js](https://github.com/log4js-node/log4js-node/) v3+.
+
 Before you start create table to store records produced by adapter
 ```
 CREATE TABLE public."Logs" (
