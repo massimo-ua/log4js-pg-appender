@@ -1,5 +1,8 @@
 {
   "name": "@simoware/log4js-pg-appender",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "version": "0.0.1",
   "description": "Simple Log4js postgresql appender",
   "main": "index.js",
