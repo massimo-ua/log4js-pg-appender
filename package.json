@@ -5,12 +5,24 @@
   },
   "version": "0.0.1",
   "description": "Simple Log4js postgresql appender",
-  "main": "index.js",
+  "main": "dist/log4js-pg-appender.min.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/**/*.test.js",
+    "test:watch": "node --test --watch test/**/*.test.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean && npm run lint:fix && npm run test",
+    "build": "node build.js",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -26,5 +38,10 @@
   "dependencies": {
     "pg": "8.13.1"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "sinon": "^17.0.1",
+    "log4js": "^6.9.1",
+    "eslint": "^8.56.0",
+    "esbuild": "^0.20.0"
+  }
 }
