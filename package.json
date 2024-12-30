@@ -3,7 +3,7 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simple Log4js postgresql appender",
   "main": "dist/log4js-pg-appender.min.js",
   "files": [
