@@ -53,7 +53,7 @@ async function build() {
     console.log('Build analysis:', text);
 
   } catch (error) {
-    // eslint-disable-next-line no-console
+     
     console.error('Build failed:', error);
     process.exit(1);
   }
