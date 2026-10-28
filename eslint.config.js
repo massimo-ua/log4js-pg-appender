@@ -9,7 +9,7 @@ const compat = new FlatCompat({
 });
 
 module.exports = [{
-  ignores: ['**/node_modules/', '**/  coverage/', '**/  dist/', '**/  .nyc_output/'],
+  ignores: ['node_modules/**', 'dist/**', 'coverage/**', '.nyc_output/**'],
 }, ...compat.extends('eslint:recommended'), {
   languageOptions: {
     globals: {

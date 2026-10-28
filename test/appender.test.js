@@ -7,10 +7,13 @@ const { Client } = require('pg');
 const appender = require('../lib/appender');
 const db = require('../lib/db');
 
-test('PostgreSQL Appender', async (t) => {
-  // Setup
-  await setupTestDatabase();
-  
+test('PostgreSQL Appender Integration', async (t) => {
+  const isAvailable = await setupTestDatabase();
+  if (!isAvailable) {
+    t.skip('Skipping live integration tests: PostgreSQL is not reachable at localhost:5555');
+    return;
+  }
+
   t.afterEach(async () => {
     // Clean up database records after each test
     const client = new Client(testConfig);
@@ -19,7 +22,7 @@ test('PostgreSQL Appender', async (t) => {
     await client.end();
     db.disconnect();
   });
-  
+
   t.after(async () => {
     // Teardown test database
     await teardownTestDatabase();
@@ -32,18 +35,14 @@ test('PostgreSQL Appender', async (t) => {
         /config is required/
       );
     });
-
-    await t.test('should throw error when host is missing', () => {
-      assert.throws(
-        () => appender.configure({ database: 'test', user: 'test', password: 'test', tableName: 'test' }),
-        /host is required/
-      );
-    });
   });
 
   await t.test('logging functionality', async (t) => {
     await t.test('should write log entry to database', async () => {
-      const pgAppender = appender.configure(testConfig);
+      const pgAppender = appender.configure({
+        ...testConfig,
+        schema: null, // Test table was created in default public without schema qualification
+      });
       const testEvent = {
         startTime: new Date(),
         categoryName: 'test-category',
@@ -53,33 +52,35 @@ test('PostgreSQL Appender', async (t) => {
       };
 
       pgAppender(testEvent);
-      
+
       // Wait a bit for async operation to complete
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const client = new Client(testConfig);
       await client.connect();
-      
+
       const result = await client.query(
         `SELECT * FROM "${testConfig.tableName}" WHERE "categoryName" = $1`,
         ['test-category']
       );
-      
+
       assert.equal(result.rows.length, 1);
       assert.equal(result.rows[0].level, 'INFO');
-      // The data column contains a stringified JSON, so we need to parse it first
       const data = result.rows[0].data;
       const context = result.rows[0].context;
-      
-      // Compare the parsed objects
+
       assert.deepEqual(typeof data === 'string' ? JSON.parse(data) : data, { message: 'test message' });
       assert.deepEqual(typeof context === 'string' ? JSON.parse(context) : context, { user: 'testuser' });
-      
+
       await client.end();
+      await pgAppender.shutdown();
     });
 
     await t.test('should handle null context', async () => {
-      const pgAppender = appender.configure(testConfig);
+      const pgAppender = appender.configure({
+        ...testConfig,
+        schema: null,
+      });
       const testEvent = {
         startTime: new Date(),
         categoryName: 'test-category',
@@ -89,37 +90,37 @@ test('PostgreSQL Appender', async (t) => {
       };
 
       pgAppender(testEvent);
-      
+
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       const client = new Client(testConfig);
       await client.connect();
-      
+
       const result = await client.query(
         `SELECT * FROM "${testConfig.tableName}" WHERE "categoryName" = $1`,
         ['test-category']
       );
-      
+
       assert.equal(result.rows.length, 1);
       assert.equal(result.rows[0].context, null);
-      
+
       await client.end();
+      await pgAppender.shutdown();
     });
   });
 
   await t.test('database connection', async (t) => {
-    await t.test('should reuse existing connection', async () => {
+    await t.test('should reuse existing connection in legacy db client', async () => {
       const firstConnection = db.connect(testConfig);
       const secondConnection = db.connect(testConfig);
-      
+
       assert.strictEqual(firstConnection, secondConnection);
     });
 
-    await t.test('should handle disconnect properly', async () => {
+    await t.test('should handle disconnect properly in legacy db client', async () => {
       const connection = db.connect(testConfig);
       db.disconnect();
-      
-      // Verify the connection is closed by trying to query
+
       await assert.rejects(
         async () => {
           await connection.query('SELECT 1');

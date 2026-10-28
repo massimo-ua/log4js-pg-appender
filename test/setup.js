@@ -1,14 +1,34 @@
 const { Client } = require('pg');
 const testConfig = require('./config');
 
+async function isDatabaseReachable() {
+  const client = new Client({
+    ...testConfig,
+    database: 'postgres',
+    connectionTimeoutMillis: 500,
+  });
+  try {
+    await client.connect();
+    await client.end();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function setupTestDatabase() {
+  const reachable = await isDatabaseReachable();
+  if (!reachable) {
+    return false;
+  }
+
   const client = new Client({
     ...testConfig,
     database: 'postgres', // Connect to default database first
   });
-    
+
   await client.connect();
-    
+
   // Create test database if it doesn't exist
   try {
     await client.query(`CREATE DATABASE ${testConfig.database}`);
@@ -17,13 +37,13 @@ async function setupTestDatabase() {
       throw err;
     }
   }
-    
+
   await client.end();
-    
+
   // Connect to test database and create table
   const testClient = new Client(testConfig);
   await testClient.connect();
-    
+
   await testClient.query(`
       CREATE TABLE IF NOT EXISTS "${testConfig.tableName}" (
         "id" SERIAL PRIMARY KEY,
@@ -34,18 +54,24 @@ async function setupTestDatabase() {
         "context" JSONB
       )
     `);
-    
+
   await testClient.end();
+  return true;
 }
-  
+
 async function teardownTestDatabase() {
+  const reachable = await isDatabaseReachable();
+  if (!reachable) {
+    return;
+  }
+
   const client = new Client({
     ...testConfig,
     database: 'postgres',
   });
-    
+
   await client.connect();
-    
+
   // Terminate all connections to the test database
   await client.query(`
       SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -53,15 +79,15 @@ async function teardownTestDatabase() {
       WHERE pg_stat_activity.datname = '${testConfig.database}'
       AND pid <> pg_backend_pid()
     `);
-    
+
   // Drop test database
   await client.query(`DROP DATABASE IF EXISTS ${testConfig.database}`);
-    
+
   await client.end();
 }
-  
+
 module.exports = {
+  isDatabaseReachable,
   setupTestDatabase,
   teardownTestDatabase,
 };
-  
