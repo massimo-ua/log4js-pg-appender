@@ -1,6 +1,10 @@
 const { Client } = require('pg');
 const testConfig = require('./config');
 
+function escapeIdentifier(str) {
+  return `"${String(str).replace(/"/g, '""')}"`;
+}
+
 async function isDatabaseReachable() {
   const client = new Client({
     ...testConfig,
@@ -31,7 +35,7 @@ async function setupTestDatabase() {
 
   // Create test database if it doesn't exist
   try {
-    await client.query(`CREATE DATABASE ${testConfig.database}`);
+    await client.query(`CREATE DATABASE ${escapeIdentifier(testConfig.database)}`);
   } catch (err) {
     if (err.code !== '42P04') { // 42P04 = database already exists
       throw err;
@@ -45,7 +49,7 @@ async function setupTestDatabase() {
   await testClient.connect();
 
   await testClient.query(`
-      CREATE TABLE IF NOT EXISTS "${testConfig.tableName}" (
+      CREATE TABLE IF NOT EXISTS ${escapeIdentifier(testConfig.tableName)} (
         "id" SERIAL PRIMARY KEY,
         "startTime" TIMESTAMP NOT NULL,
         "categoryName" VARCHAR(255) NOT NULL,
@@ -73,15 +77,16 @@ async function teardownTestDatabase() {
   await client.connect();
 
   // Terminate all connections to the test database
-  await client.query(`
-      SELECT pg_terminate_backend(pg_stat_activity.pid)
+  await client.query(
+    `SELECT pg_terminate_backend(pg_stat_activity.pid)
       FROM pg_stat_activity
-      WHERE pg_stat_activity.datname = '${testConfig.database}'
-      AND pid <> pg_backend_pid()
-    `);
+      WHERE pg_stat_activity.datname = $1
+      AND pid <> pg_backend_pid()`,
+    [testConfig.database]
+  );
 
   // Drop test database
-  await client.query(`DROP DATABASE IF EXISTS ${testConfig.database}`);
+  await client.query(`DROP DATABASE IF EXISTS ${escapeIdentifier(testConfig.database)}`);
 
   await client.end();
 }

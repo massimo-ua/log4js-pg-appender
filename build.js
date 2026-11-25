@@ -18,7 +18,7 @@ async function build() {
   const banner = await getBanner();
   
   try {
-    await esbuild.build({
+    const result = await esbuild.build({
       entryPoints: ['./index.js'],
       bundle: true,
       minify: true,
@@ -34,21 +34,8 @@ async function build() {
       sourcemap: true,
     });
 
-    // Build metadata for analysis
-    const metadata = await esbuild.build({
-      entryPoints: ['./index.js'],
-      bundle: true,
-      minify: true,
-      platform: 'node',
-      target: 'node20',
-      external: ['pg'],
-      format: 'cjs',
-      metafile: true,
-      write: false,
-    });
-
     // Output build analysis
-    const text = await esbuild.analyzeMetafile(metadata.metafile);
+    const text = await esbuild.analyzeMetafile(result.metafile);
     // eslint-disable-next-line no-console
     console.log('Build analysis:', text);
 
