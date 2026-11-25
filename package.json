@@ -23,8 +23,15 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "node --test test/**/*.test.js",
-    "test:watch": "node --test --watch test/**/*.test.js",
+    "test": "node --test test/*.test.js",
+    "test:watch": "node --test --watch test/*.test.js",
+    "test:db:up": "docker compose up -d --wait",
+    "test:db:down": "docker compose down -v",
+    "test:integration:run": "node --test test/integration/*.test.js",
+    "test:integration": "node test/integration/run.js",
+    "test:perf": "node test/perf/run.js",
+    "test:perf:unit": "node --test test/perf/unit.perf.test.js",
+    "test:perf:db": "node --test test/perf/postgres.perf.test.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",

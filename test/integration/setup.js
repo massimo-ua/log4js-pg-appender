@@ -9,7 +9,7 @@ async function isDatabaseReachable() {
   const client = new Client({
     ...testConfig,
     database: 'postgres',
-    connectionTimeoutMillis: 500,
+    connectionTimeoutMillis: 2000,
   });
   try {
     await client.connect();
@@ -23,44 +23,46 @@ async function isDatabaseReachable() {
 async function setupTestDatabase() {
   const reachable = await isDatabaseReachable();
   if (!reachable) {
-    return false;
+    throw new Error(
+      `PostgreSQL is not reachable at ${testConfig.host}:${testConfig.port}. `
+      + 'Run "npm run test:integration" or start PostgreSQL with "npm run test:db:up".'
+    );
   }
 
   const client = new Client({
     ...testConfig,
-    database: 'postgres', // Connect to default database first
+    database: 'postgres',
   });
 
   await client.connect();
 
-  // Create test database if it doesn't exist
   try {
     await client.query(`CREATE DATABASE ${escapeIdentifier(testConfig.database)}`);
   } catch (err) {
     if (err.code !== '42P04') { // 42P04 = database already exists
       throw err;
     }
+  } finally {
+    await client.end();
   }
 
-  await client.end();
-
-  // Connect to test database and create table
   const testClient = new Client(testConfig);
   await testClient.connect();
 
-  await testClient.query(`
+  try {
+    await testClient.query(`
       CREATE TABLE IF NOT EXISTS ${escapeIdentifier(testConfig.tableName)} (
         "id" SERIAL PRIMARY KEY,
-        "startTime" TIMESTAMP NOT NULL,
+        "startTime" TIMESTAMP WITH TIME ZONE NOT NULL,
         "categoryName" VARCHAR(255) NOT NULL,
         "data" JSONB NOT NULL,
-        "level" VARCHAR(10) NOT NULL,
+        "level" VARCHAR(20) NOT NULL,
         "context" JSONB
       )
     `);
-
-  await testClient.end();
-  return true;
+  } finally {
+    await testClient.end();
+  }
 }
 
 async function teardownTestDatabase() {
@@ -76,22 +78,23 @@ async function teardownTestDatabase() {
 
   await client.connect();
 
-  // Terminate all connections to the test database
-  await client.query(
-    `SELECT pg_terminate_backend(pg_stat_activity.pid)
-      FROM pg_stat_activity
-      WHERE pg_stat_activity.datname = $1
-      AND pid <> pg_backend_pid()`,
-    [testConfig.database]
-  );
+  try {
+    await client.query(
+      `SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = $1
+        AND pid <> pg_backend_pid()`,
+      [testConfig.database]
+    );
 
-  // Drop test database
-  await client.query(`DROP DATABASE IF EXISTS ${escapeIdentifier(testConfig.database)}`);
-
-  await client.end();
+    await client.query(`DROP DATABASE IF EXISTS ${escapeIdentifier(testConfig.database)}`);
+  } finally {
+    await client.end();
+  }
 }
 
 module.exports = {
+  escapeIdentifier,
   isDatabaseReachable,
   setupTestDatabase,
   teardownTestDatabase,

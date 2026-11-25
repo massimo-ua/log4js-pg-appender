@@ -198,3 +198,34 @@ log4js.configure({
   },
 });
 ```
+
+## Testing
+
+```bash
+# Run unit tests (fast, no database required)
+npm test
+
+# Run live PostgreSQL integration tests via Docker Compose (starts Postgres, runs tests, tears down)
+npm run test:integration
+
+# Run performance tests (unit micro-benchmarks + live PostgreSQL throughput/burst tests via Docker Compose)
+npm run test:perf
+
+# Run offline unit micro-benchmarks only (no Docker required)
+npm run test:perf:unit
+```
+
+For faster local iteration against a running PostgreSQL container:
+
+```bash
+npm run test:db:up
+npm run test:integration:run
+npm run test:perf:db
+npm run test:db:down
+```
+
+You can override the PostgreSQL version, port, or performance burst size using environment variables:
+
+```bash
+PG_IMAGE=postgres:16-alpine PGPORT=5556 PERF_EVENTS=5000 npm run test:perf
+```

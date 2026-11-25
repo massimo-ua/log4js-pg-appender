@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: ${PG_IMAGE:-postgres:17-alpine}
+    environment:
+      POSTGRES_USER: ${PGUSER:-test}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-test}
+      POSTGRES_DB: ${PGDATABASE:-test_logs}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${PGPORT:-5555}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+      start_period: 2s
