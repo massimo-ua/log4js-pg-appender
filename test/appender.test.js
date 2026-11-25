@@ -107,6 +107,58 @@ test('PostgreSQL Appender Integration', async (t) => {
       await client.end();
       await pgAppender.shutdown();
     });
+
+    await t.test('should write custom mapped columns to a custom table', async () => {
+      const customTable = 'custom_mapped_logs';
+      const client = new Client(testConfig);
+      await client.connect();
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS "${customTable}" (
+          "id" SERIAL PRIMARY KEY,
+          "created_at" TIMESTAMP NOT NULL,
+          "severity" VARCHAR(10) NOT NULL,
+          "request_id" VARCHAR(64),
+          "user_id" INTEGER,
+          "message" TEXT NOT NULL
+        )
+      `);
+
+      const pgAppender = appender.configure({
+        ...testConfig,
+        schema: null,
+        tableName: customTable,
+        columns: {
+          created_at: 'startTime',
+          severity: 'level',
+          request_id: 'context.requestId',
+          user_id: 'data.1.userId',
+          message: (event) => event.data[0],
+        },
+      });
+
+      try {
+        pgAppender({
+          startTime: new Date('2026-01-01T00:00:00Z'),
+          categoryName: 'custom',
+          data: ['User signed in', { userId: 7 }],
+          level: { levelStr: 'INFO' },
+          context: { requestId: 'req-abc' },
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const result = await client.query(`SELECT * FROM "${customTable}"`);
+        assert.equal(result.rows.length, 1);
+        assert.equal(result.rows[0].severity, 'INFO');
+        assert.equal(result.rows[0].request_id, 'req-abc');
+        assert.equal(result.rows[0].user_id, 7);
+        assert.equal(result.rows[0].message, 'User signed in');
+      } finally {
+        await pgAppender.shutdown();
+        await client.query(`DROP TABLE IF EXISTS "${customTable}"`);
+        await client.end();
+      }
+    });
   });
 
   await t.test('database connection', async (t) => {
