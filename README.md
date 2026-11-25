@@ -173,3 +173,28 @@ log4js.shutdown((err) => {
   process.exit(0);
 });
 ```
+
+## TypeScript
+
+Type definitions are bundled with the package (`types/index.d.ts`) and augment `log4js`'s `Appenders` interface automatically when imported:
+
+```typescript
+import log4js from 'log4js';
+import { DEFAULT_COLUMNS } from '@simoware/log4js-pg-appender';
+
+log4js.configure({
+  appenders: {
+    db: {
+      type: '@simoware/log4js-pg-appender',
+      connectionString: 'postgresql://logger:test@postgres:5432/test',
+      columns: {
+        ...DEFAULT_COLUMNS,
+        request_id: 'context.requestId',
+      },
+    },
+  },
+  categories: {
+    default: { appenders: ['db'], level: 'info' },
+  },
+});
+```
